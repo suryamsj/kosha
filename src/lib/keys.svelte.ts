@@ -6,6 +6,7 @@ export interface KeyInfo {
   fingerprint: string;
   createdAt: number;
   hasPrivate: boolean;
+  associatedHosts: string[];
 }
 
 interface ListKeysResponse {

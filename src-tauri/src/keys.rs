@@ -12,6 +12,7 @@ pub struct KeyInfo {
     pub fingerprint: String,
     pub created_at: u64,
     pub has_private: bool,
+    pub associated_hosts: Vec<String>,
 }
 
 #[derive(Serialize, Debug)]
@@ -77,6 +78,25 @@ fn created_at_secs(path: &Path) -> u64 {
         .unwrap_or(0)
 }
 
+fn hosts_using_key(
+    priv_path: &Path,
+    hosts: &[crate::config::HostEntry],
+    ssh_dir: &Path,
+    home: &Path,
+) -> Vec<String> {
+    let mut aliases = vec![];
+    for host in hosts {
+        let Some(identity_file) = &host.identity_file else {
+            continue;
+        };
+        let resolved = crate::config::resolve_identity_path(identity_file, ssh_dir, home);
+        if resolved == priv_path {
+            aliases.extend(host.aliases.iter().cloned());
+        }
+    }
+    aliases
+}
+
 #[tauri::command]
 pub fn list_keys() -> Result<ListKeysResponse, String> {
     let ssh_dir = ssh_dir_path()?;
@@ -93,6 +113,9 @@ pub fn list_keys() -> Result<ListKeysResponse, String> {
         .map(|e| e.file_name().to_string_lossy().to_string())
         .collect();
 
+    let hosts = crate::config::list_hosts().unwrap_or_default();
+    let home = dirs::home_dir().unwrap_or_else(|| ssh_dir.clone());
+
     let keys = pub_key_names(&filenames)
         .into_iter()
         .map(|name| {
@@ -100,12 +123,14 @@ pub fn list_keys() -> Result<ListKeysResponse, String> {
             let priv_path = ssh_dir.join(&name);
             let (key_type, fingerprint) = fingerprint_for(&pub_path)
                 .unwrap_or_else(|| ("unknown".to_string(), "unknown".to_string()));
+            let associated_hosts = hosts_using_key(&priv_path, &hosts, &ssh_dir, &home);
             KeyInfo {
                 name,
                 key_type,
                 fingerprint,
                 created_at: created_at_secs(&pub_path),
                 has_private: priv_path.exists(),
+                associated_hosts,
             }
         })
         .collect();
@@ -167,6 +192,7 @@ pub fn generate_key(name: String, passphrase: Option<String>) -> Result<KeyInfo,
         fingerprint,
         created_at: created_at_secs(&pub_path),
         has_private: true,
+        associated_hosts: vec![],
     })
 }
 
@@ -229,5 +255,48 @@ mod tests {
     fn ignores_files_without_pub_suffix() {
         let files = vec!["known_hosts".to_string(), "config".to_string()];
         assert_eq!(pub_key_names(&files), Vec::<String>::new());
+    }
+
+    #[test]
+    fn hosts_using_key_matches_resolved_identity_path() {
+        let home = Path::new("/home/oci");
+        let ssh_dir = Path::new("/home/oci/.ssh");
+        let priv_path = ssh_dir.join("id_ed25519");
+        let hosts = vec![
+            crate::config::HostEntry {
+                aliases: vec!["github".to_string(), "gh".to_string()],
+                host_name: None,
+                user: None,
+                port: None,
+                identity_file: Some("~/.ssh/id_ed25519".to_string()),
+            },
+            crate::config::HostEntry {
+                aliases: vec!["other".to_string()],
+                host_name: None,
+                user: None,
+                port: None,
+                identity_file: Some("other_key".to_string()),
+            },
+        ];
+        let result = hosts_using_key(&priv_path, &hosts, ssh_dir, home);
+        assert_eq!(result, vec!["github".to_string(), "gh".to_string()]);
+    }
+
+    #[test]
+    fn hosts_using_key_returns_empty_when_no_match() {
+        let home = Path::new("/home/oci");
+        let ssh_dir = Path::new("/home/oci/.ssh");
+        let priv_path = ssh_dir.join("id_ed25519");
+        let hosts = vec![crate::config::HostEntry {
+            aliases: vec!["other".to_string()],
+            host_name: None,
+            user: None,
+            port: None,
+            identity_file: Some("other_key".to_string()),
+        }];
+        assert_eq!(
+            hosts_using_key(&priv_path, &hosts, ssh_dir, home),
+            Vec::<String>::new()
+        );
     }
 }
