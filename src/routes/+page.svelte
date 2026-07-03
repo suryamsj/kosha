@@ -4,10 +4,12 @@
   import NewKeyForm from "$lib/components/NewKeyForm.svelte";
   import KeyDetail from "$lib/components/KeyDetail.svelte";
   import DeleteConfirm from "$lib/components/DeleteConfirm.svelte";
+  import HostsTable from "$lib/components/HostsTable.svelte";
 
   let showNewKeyForm = $state(false);
   let selectedKey = $state<KeyInfo | null>(null);
   let keyToDelete = $state<KeyInfo | null>(null);
+  let activeTab = $state<"keys" | "hosts">("keys");
 
   onMount(() => {
     keysStore.refresh();
@@ -22,50 +24,73 @@
 <main class="container">
   <div class="header">
     <h1>Kosha</h1>
-    <button onclick={() => (showNewKeyForm = true)}>New Key</button>
+    {#if activeTab === "keys"}
+      <button onclick={() => (showNewKeyForm = true)}>New Key</button>
+    {/if}
   </div>
 
-  {#if keysStore.error}
-    <p class="error">{keysStore.error}</p>
-  {:else if keysStore.sshDirMissing}
-    <div class="empty-state">
-      <p>No ~/.ssh directory found.</p>
-      <button onclick={() => keysStore.createSshDir()}>Create ~/.ssh</button>
-    </div>
-  {:else if keysStore.keys.length === 0}
-    <p class="empty-state">No keys yet.</p>
-  {:else}
-    <table>
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Fingerprint</th>
-          <th>Created</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {#each keysStore.keys as key (key.name)}
-          <tr onclick={() => (selectedKey = key)}>
-            <td>{key.name}</td>
-            <td>{key.keyType}</td>
-            <td class="mono">{key.fingerprint}</td>
-            <td>{formatDate(key.createdAt)}</td>
-            <td>
-              <button
-                onclick={(e) => {
-                  e.stopPropagation();
-                  keyToDelete = key;
-                }}
-              >
-                Delete
-              </button>
-            </td>
+  <div class="tabs">
+    <button
+      class:active={activeTab === "keys"}
+      onclick={() => (activeTab = "keys")}
+    >
+      Keys
+    </button>
+    <button
+      class:active={activeTab === "hosts"}
+      onclick={() => (activeTab = "hosts")}
+    >
+      Hosts
+    </button>
+  </div>
+
+  {#if activeTab === "keys"}
+    {#if keysStore.error}
+      <p class="error">{keysStore.error}</p>
+    {:else if keysStore.sshDirMissing}
+      <div class="empty-state">
+        <p>No ~/.ssh directory found.</p>
+        <button onclick={() => keysStore.createSshDir()}>Create ~/.ssh</button>
+      </div>
+    {:else if keysStore.keys.length === 0}
+      <p class="empty-state">No keys yet.</p>
+    {:else}
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Fingerprint</th>
+            <th>Created</th>
+            <th>Used by</th>
+            <th></th>
           </tr>
-        {/each}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {#each keysStore.keys as key (key.name)}
+            <tr onclick={() => (selectedKey = key)}>
+              <td>{key.name}</td>
+              <td>{key.keyType}</td>
+              <td class="mono">{key.fingerprint}</td>
+              <td>{formatDate(key.createdAt)}</td>
+              <td>{key.associatedHosts.join(", ") || "-"}</td>
+              <td>
+                <button
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    keyToDelete = key;
+                  }}
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {/if}
+  {:else}
+    <HostsTable />
   {/if}
 </main>
 
@@ -91,7 +116,24 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 1rem;
+  }
+  .tabs {
+    display: flex;
+    gap: 0.5rem;
     margin-bottom: 1.5rem;
+    border-bottom: 1px solid #ddd;
+  }
+  .tabs button {
+    background: none;
+    border: none;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  .tabs button.active {
+    border-bottom-color: #396cd8;
+    font-weight: 600;
   }
   table {
     width: 100%;
