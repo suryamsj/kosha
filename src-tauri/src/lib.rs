@@ -12,6 +12,9 @@ pub fn run() {
             keys::get_public_key,
             keys::delete_key,
             config::list_hosts,
+            config::add_host,
+            config::edit_host,
+            config::delete_host,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
