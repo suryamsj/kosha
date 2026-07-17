@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import { configStore, type HostEntry } from "$lib/config.svelte";
   import HostForm from "$lib/components/HostForm.svelte";
   import DeleteHostConfirm from "$lib/components/DeleteHostConfirm.svelte";
@@ -8,6 +9,12 @@
   let editingHost = $state<HostEntry | null>(null);
   let hostToDelete = $state<HostEntry | null>(null);
   let hostSearch = $state("");
+
+  type TestResult = {
+    status: "testing" | "success" | "error";
+    message: string;
+  };
+  let testResults = $state<Record<string, TestResult>>({});
 
   onMount(() => {
     configStore.refresh();
@@ -22,6 +29,19 @@
         (host.hostName?.toLowerCase().includes(q) ?? false),
     );
   });
+
+  async function testConnection(host: HostEntry) {
+    const key = host.aliases.join(",");
+    testResults[key] = { status: "testing", message: "" };
+    try {
+      const message = await invoke<string>("test_connection", {
+        alias: host.aliases[0],
+      });
+      testResults[key] = { status: "success", message };
+    } catch (e) {
+      testResults[key] = { status: "error", message: String(e) };
+    }
+  }
 </script>
 
 <div class="header">
@@ -54,6 +74,7 @@
     </thead>
     <tbody>
       {#each filteredHosts as host (host.aliases.join(","))}
+        {@const result = testResults[host.aliases.join(",")]}
         <tr>
           <td>{host.aliases.join(", ")}</td>
           <td>{host.hostName ?? "-"}</td>
@@ -63,6 +84,20 @@
           <td>
             <button onclick={() => (editingHost = host)}>Edit</button>
             <button onclick={() => (hostToDelete = host)}>Delete</button>
+            <button
+              onclick={() => testConnection(host)}
+              disabled={result?.status === "testing"}
+            >
+              {result?.status === "testing" ? "Testing..." : "Test"}
+            </button>
+            {#if result && result.status !== "testing"}
+              <span
+                class={result.status === "success" ? "test-ok" : "test-fail"}
+              >
+                {result.status === "success" ? "✓" : "✗"}
+                {result.message}
+              </span>
+            {/if}
           </td>
         </tr>
       {/each}
@@ -124,5 +159,15 @@
   }
   .error {
     color: #c0392b;
+  }
+  .test-ok {
+    color: #2e7d32;
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
+  }
+  .test-fail {
+    color: #c0392b;
+    margin-left: 0.5rem;
+    font-size: 0.8rem;
   }
 </style>
