@@ -10,6 +10,7 @@
   let selectedKey = $state<KeyInfo | null>(null);
   let keyToDelete = $state<KeyInfo | null>(null);
   let activeTab = $state<"keys" | "hosts">("keys");
+  let keySearch = $state("");
 
   onMount(() => {
     keysStore.refresh();
@@ -19,6 +20,16 @@
     if (!secs) return "unknown";
     return new Date(secs * 1000).toLocaleDateString();
   }
+
+  let filteredKeys = $derived.by(() => {
+    const q = keySearch.trim().toLowerCase();
+    if (!q) return keysStore.keys;
+    return keysStore.keys.filter(
+      (key) =>
+        key.name.toLowerCase().includes(q) ||
+        key.associatedHosts.some((host) => host.toLowerCase().includes(q)),
+    );
+  });
 </script>
 
 <main class="container">
@@ -55,39 +66,49 @@
     {:else if keysStore.keys.length === 0}
       <p class="empty-state">No keys yet.</p>
     {:else}
-      <table>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Type</th>
-            <th>Fingerprint</th>
-            <th>Created</th>
-            <th>Used by</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {#each keysStore.keys as key (key.name)}
-            <tr onclick={() => (selectedKey = key)}>
-              <td>{key.name}</td>
-              <td>{key.keyType}</td>
-              <td class="mono">{key.fingerprint}</td>
-              <td>{formatDate(key.createdAt)}</td>
-              <td>{key.associatedHosts.join(", ") || "-"}</td>
-              <td>
-                <button
-                  onclick={(e) => {
-                    e.stopPropagation();
-                    keyToDelete = key;
-                  }}
-                >
-                  Delete
-                </button>
-              </td>
+      <input
+        class="search"
+        type="search"
+        placeholder="Search keys..."
+        bind:value={keySearch}
+      />
+      {#if filteredKeys.length === 0}
+        <p class="empty-state">No keys match "{keySearch}".</p>
+      {:else}
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Fingerprint</th>
+              <th>Created</th>
+              <th>Used by</th>
+              <th></th>
             </tr>
-          {/each}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {#each filteredKeys as key (key.name)}
+              <tr onclick={() => (selectedKey = key)}>
+                <td>{key.name}</td>
+                <td>{key.keyType}</td>
+                <td class="mono">{key.fingerprint}</td>
+                <td>{formatDate(key.createdAt)}</td>
+                <td>{key.associatedHosts.join(", ") || "-"}</td>
+                <td>
+                  <button
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      keyToDelete = key;
+                    }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
     {/if}
   {:else}
     <HostsTable />
@@ -134,6 +155,12 @@
   .tabs button.active {
     border-bottom-color: #396cd8;
     font-weight: 600;
+  }
+  .search {
+    width: 100%;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
   }
   table {
     width: 100%;
