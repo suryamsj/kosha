@@ -1,4 +1,5 @@
 mod config;
+mod connection;
 mod keys;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -15,6 +16,7 @@ pub fn run() {
             config::add_host,
             config::edit_host,
             config::delete_host,
+            connection::test_connection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
