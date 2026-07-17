@@ -7,13 +7,30 @@
   let showAddHost = $state(false);
   let editingHost = $state<HostEntry | null>(null);
   let hostToDelete = $state<HostEntry | null>(null);
+  let hostSearch = $state("");
 
   onMount(() => {
     configStore.refresh();
   });
+
+  let filteredHosts = $derived.by(() => {
+    const q = hostSearch.trim().toLowerCase();
+    if (!q) return configStore.hosts;
+    return configStore.hosts.filter(
+      (host) =>
+        host.aliases.some((alias) => alias.toLowerCase().includes(q)) ||
+        (host.hostName?.toLowerCase().includes(q) ?? false),
+    );
+  });
 </script>
 
 <div class="header">
+  <input
+    class="search"
+    type="search"
+    placeholder="Search hosts..."
+    bind:value={hostSearch}
+  />
   <button onclick={() => (showAddHost = true)}>Add Host</button>
 </div>
 
@@ -21,6 +38,8 @@
   <p class="error">{configStore.error}</p>
 {:else if configStore.hosts.length === 0}
   <p class="empty-state">No hosts configured.</p>
+{:else if filteredHosts.length === 0}
+  <p class="empty-state">No hosts match "{hostSearch}".</p>
 {:else}
   <table>
     <thead>
@@ -34,7 +53,7 @@
       </tr>
     </thead>
     <tbody>
-      {#each configStore.hosts as host (host.aliases.join(","))}
+      {#each filteredHosts as host (host.aliases.join(","))}
         <tr>
           <td>{host.aliases.join(", ")}</td>
           <td>{host.hostName ?? "-"}</td>
@@ -73,8 +92,16 @@
 <style>
   .header {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
     margin-bottom: 1rem;
+  }
+  .search {
+    flex: 1;
+    max-width: 240px;
+    padding: 0.5rem;
+    box-sizing: border-box;
   }
   table {
     width: 100%;
