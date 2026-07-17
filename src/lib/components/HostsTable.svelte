@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { configStore, type HostEntry } from "$lib/config.svelte";
+  import { tagsStore } from "$lib/tags.svelte";
   import HostForm from "$lib/components/HostForm.svelte";
   import DeleteHostConfirm from "$lib/components/DeleteHostConfirm.svelte";
 
@@ -9,25 +10,46 @@
   let editingHost = $state<HostEntry | null>(null);
   let hostToDelete = $state<HostEntry | null>(null);
   let hostSearch = $state("");
+  let tagFilter = $state("");
 
   type TestResult = {
     status: "testing" | "success" | "error";
     message: string;
   };
   let testResults = $state<Record<string, TestResult>>({});
+  let tagInputs = $state<Record<string, string>>({});
 
   onMount(() => {
     configStore.refresh();
+    tagsStore.refresh();
+  });
+
+  let allTags = $derived.by(() => {
+    const set = new Set<string>();
+    for (const tags of Object.values(tagsStore.tags)) {
+      for (const tag of tags) set.add(tag);
+    }
+    return [...set].sort();
+  });
+
+  $effect(() => {
+    if (tagFilter && !allTags.includes(tagFilter)) {
+      tagFilter = "";
+    }
   });
 
   let filteredHosts = $derived.by(() => {
     const q = hostSearch.trim().toLowerCase();
-    if (!q) return configStore.hosts;
-    return configStore.hosts.filter(
-      (host) =>
+    return configStore.hosts.filter((host) => {
+      const matchesSearch =
+        !q ||
         host.aliases.some((alias) => alias.toLowerCase().includes(q)) ||
-        (host.hostName?.toLowerCase().includes(q) ?? false),
-    );
+        (host.hostName?.toLowerCase().includes(q) ?? false);
+      const matchesTag =
+        !tagFilter ||
+        (tagsStore.tags[host.aliases.join(",")] ?? []).includes(tagFilter);
+      return matchesSearch && matchesTag;
+    });
   });
 
   async function testConnection(host: HostEntry) {
@@ -42,6 +64,27 @@
       testResults[key] = { status: "error", message: String(e) };
     }
   }
+
+  function tagsDisplayValue(host: HostEntry): string {
+    const key = host.aliases.join(",");
+    if (key in tagInputs) return tagInputs[key];
+    return (tagsStore.tags[key] ?? []).join(", ");
+  }
+
+  function onTagsInput(host: HostEntry, value: string) {
+    tagInputs[host.aliases.join(",")] = value;
+  }
+
+  async function onTagsBlur(host: HostEntry) {
+    const key = host.aliases.join(",");
+    const value = tagInputs[key] ?? "";
+    const parsed = value
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    await tagsStore.setTags(key, parsed);
+    delete tagInputs[key];
+  }
 </script>
 
 <div class="header">
@@ -51,15 +94,25 @@
     placeholder="Search hosts..."
     bind:value={hostSearch}
   />
+  <select bind:value={tagFilter}>
+    <option value="">All tags</option>
+    {#each allTags as tag (tag)}
+      <option value={tag}>{tag}</option>
+    {/each}
+  </select>
   <button onclick={() => (showAddHost = true)}>Add Host</button>
 </div>
+
+{#if tagsStore.error}
+  <p class="error">{tagsStore.error}</p>
+{/if}
 
 {#if configStore.error}
   <p class="error">{configStore.error}</p>
 {:else if configStore.hosts.length === 0}
   <p class="empty-state">No hosts configured.</p>
 {:else if filteredHosts.length === 0}
-  <p class="empty-state">No hosts match "{hostSearch}".</p>
+  <p class="empty-state">No hosts match the current filters.</p>
 {:else}
   <table>
     <thead>
@@ -69,6 +122,7 @@
         <th>User</th>
         <th>Port</th>
         <th>Identity File</th>
+        <th>Tags</th>
         <th></th>
       </tr>
     </thead>
@@ -81,6 +135,17 @@
           <td>{host.user ?? "-"}</td>
           <td>{host.port ?? "-"}</td>
           <td class="mono">{host.identityFile ?? "-"}</td>
+          <td>
+            <input
+              class="tags-input"
+              type="text"
+              placeholder="work, personal"
+              value={tagsDisplayValue(host)}
+              oninput={(e) =>
+                onTagsInput(host, (e.target as HTMLInputElement).value)}
+              onblur={() => onTagsBlur(host)}
+            />
+          </td>
           <td>
             <button onclick={() => (editingHost = host)}>Edit</button>
             <button onclick={() => (hostToDelete = host)}>Delete</button>
@@ -127,7 +192,6 @@
 <style>
   .header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
     gap: 0.5rem;
     margin-bottom: 1rem;
@@ -137,6 +201,9 @@
     max-width: 240px;
     padding: 0.5rem;
     box-sizing: border-box;
+  }
+  .header button {
+    margin-left: auto;
   }
   table {
     width: 100%;
@@ -151,6 +218,12 @@
   .mono {
     font-family: monospace;
     font-size: 0.8rem;
+  }
+  .tags-input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.3rem;
+    font-size: 0.85rem;
   }
   .empty-state {
     text-align: center;
