@@ -9,6 +9,11 @@ export interface HostEntry {
   identityFile: string | null;
 }
 
+export interface ImportPreview {
+  accepted: HostEntry[];
+  skipped: string[];
+}
+
 class ConfigStore {
   hosts = $state<HostEntry[]>([]);
   error = $state<string | null>(null);
@@ -62,6 +67,21 @@ class ConfigStore {
     await invoke("delete_host", { aliases });
     await this.refresh();
     await keysStore.refresh();
+  }
+
+  async exportHosts(): Promise<string> {
+    return invoke<string>("export_hosts");
+  }
+
+  async previewImport(text: string): Promise<ImportPreview> {
+    return invoke<ImportPreview>("preview_import", { text });
+  }
+
+  async importHosts(text: string): Promise<ImportPreview> {
+    const result = await invoke<ImportPreview>("import_hosts", { text });
+    await this.refresh();
+    await keysStore.refresh();
+    return result;
   }
 }
 

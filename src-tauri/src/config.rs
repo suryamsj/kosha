@@ -153,7 +153,7 @@ pub(crate) fn resolve_identity_path(identity_file: &str, ssh_dir: &Path, home: &
 /// new block doesn't run into the previous content. Handles an empty
 /// starting file (no separator needed) and a file that doesn't yet end in
 /// a newline.
-fn append_block(existing_text: &str, block: &str) -> String {
+pub(crate) fn append_block(existing_text: &str, block: &str) -> String {
     let mut new_text = existing_text.to_string();
     if !new_text.is_empty() && !new_text.ends_with('\n') {
         new_text.push('\n');

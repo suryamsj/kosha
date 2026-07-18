@@ -1,5 +1,6 @@
 mod config;
 mod connection;
+mod import_export;
 mod keys;
 mod tags;
 
@@ -20,6 +21,9 @@ pub fn run() {
             connection::test_connection,
             tags::list_tags,
             tags::set_tags,
+            import_export::export_hosts,
+            import_export::preview_import,
+            import_export::import_hosts,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
