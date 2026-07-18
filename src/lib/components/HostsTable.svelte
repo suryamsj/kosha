@@ -1,10 +1,15 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { configStore, type HostEntry } from "$lib/config.svelte";
+  import {
+    configStore,
+    type HostEntry,
+    type ImportPreview,
+  } from "$lib/config.svelte";
   import { tagsStore } from "$lib/tags.svelte";
   import HostForm from "$lib/components/HostForm.svelte";
   import DeleteHostConfirm from "$lib/components/DeleteHostConfirm.svelte";
+  import ImportPreviewModal from "$lib/components/ImportPreviewModal.svelte";
 
   let showAddHost = $state(false);
   let editingHost = $state<HostEntry | null>(null);
@@ -18,6 +23,11 @@
   };
   let testResults = $state<Record<string, TestResult>>({});
   let tagInputs = $state<Record<string, string>>({});
+
+  let fileInput = $state<HTMLInputElement | null>(null);
+  let importError = $state<string | null>(null);
+  let importText = $state("");
+  let importPreview = $state<ImportPreview | null>(null);
 
   onMount(() => {
     configStore.refresh();
@@ -85,6 +95,38 @@
     await tagsStore.setTags(key, parsed);
     delete tagInputs[key];
   }
+
+  async function exportHosts() {
+    const text = await configStore.exportHosts();
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kosha-hosts-export-${new Date().toISOString().replace(/[:.]/g, "-")}.conf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function triggerImport() {
+    fileInput?.click();
+  }
+
+  async function onFileSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+
+    importError = null;
+    try {
+      const text = await file.text();
+      const preview = await configStore.previewImport(text);
+      importText = text;
+      importPreview = preview;
+    } catch (e) {
+      importError = String(e);
+    }
+  }
 </script>
 
 <div class="header">
@@ -100,11 +142,27 @@
       <option value={tag}>{tag}</option>
     {/each}
   </select>
-  <button onclick={() => (showAddHost = true)}>Add Host</button>
+  <div class="actions">
+    <button onclick={exportHosts}>Export</button>
+    <button onclick={triggerImport}>Import</button>
+    <button onclick={() => (showAddHost = true)}>Add Host</button>
+  </div>
 </div>
+
+<input
+  bind:this={fileInput}
+  type="file"
+  accept=".conf,.txt,text/plain"
+  class="hidden-file-input"
+  onchange={onFileSelected}
+/>
 
 {#if tagsStore.error}
   <p class="error">{tagsStore.error}</p>
+{/if}
+
+{#if importError}
+  <p class="error">{importError}</p>
 {/if}
 
 {#if configStore.error}
@@ -189,6 +247,14 @@
   />
 {/if}
 
+{#if importPreview}
+  <ImportPreviewModal
+    text={importText}
+    preview={importPreview}
+    onClose={() => (importPreview = null)}
+  />
+{/if}
+
 <style>
   .header {
     display: flex;
@@ -202,8 +268,13 @@
     padding: 0.5rem;
     box-sizing: border-box;
   }
-  .header button {
+  .actions {
+    display: flex;
+    gap: 0.5rem;
     margin-left: auto;
+  }
+  .hidden-file-input {
+    display: none;
   }
   table {
     width: 100%;
