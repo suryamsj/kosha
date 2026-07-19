@@ -1,3 +1,45 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/forms';
 @plugin '@tailwindcss/typography';
+
+@theme {
+  --color-canvas: #fbfbfa;
+  --color-surface: #ffffff;
+  --color-border: #eaeaea;
+  --color-text: #111111;
+  --color-text-muted: #787774;
+  --color-danger: #9f2f2d;
+  --color-danger-bg: #fdebec;
+  --color-success: #346538;
+  --color-success-bg: #edf3ec;
+  --color-warning: #956400;
+  --color-warning-bg: #fbf3db;
+  --color-info: #1f6c9f;
+  --color-info-bg: #e1f3fe;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  --shadow-sm: 0 2px 8px rgb(0 0 0 / 0.04);
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue",
+    sans-serif;
+  --font-mono:
+    "SF Mono", "JetBrains Mono", ui-monospace, monospace;
+}
+
+:root[data-theme='dark'] {
+  --color-canvas: #1c1c1a;
+  --color-surface: #232320;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-text: #f2f1ed;
+  --color-text-muted: #9a9890;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  transition: background-color 150ms ease, color 150ms ease;
+}
