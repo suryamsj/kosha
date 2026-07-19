@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { PencilSimple, Trash, DownloadSimple, UploadSimple, Plus } from "phosphor-svelte";
   import {
     configStore,
     type HostEntry,
@@ -10,6 +11,10 @@
   import HostForm from "$lib/components/HostForm.svelte";
   import DeleteHostConfirm from "$lib/components/DeleteHostConfirm.svelte";
   import ImportPreviewModal from "$lib/components/ImportPreviewModal.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
+  import IconButton from "$lib/components/ui/IconButton.svelte";
+  import Input from "$lib/components/ui/Input.svelte";
+  import Badge from "$lib/components/ui/Badge.svelte";
 
   let showAddHost = $state(false);
   let editingHost = $state<HostEntry | null>(null);
@@ -129,23 +134,35 @@
   }
 </script>
 
-<div class="header">
-  <input
-    class="search"
-    type="search"
-    placeholder="Search hosts..."
-    bind:value={hostSearch}
-  />
-  <select bind:value={tagFilter}>
+<div class="mb-4 flex items-center gap-2">
+  <div class="max-w-xs flex-1">
+    <Input type="search" placeholder="Search hosts..." bind:value={hostSearch} />
+  </div>
+  <select
+    bind:value={tagFilter}
+    class="rounded-sm border border-border bg-surface px-3 py-1.5 text-sm text-text"
+  >
     <option value="">All tags</option>
     {#each allTags as tag (tag)}
       <option value={tag}>{tag}</option>
     {/each}
   </select>
-  <div class="actions">
-    <button onclick={exportHosts}>Export</button>
-    <button onclick={triggerImport}>Import</button>
-    <button onclick={() => (showAddHost = true)}>Add Host</button>
+  <div class="ml-auto flex gap-2">
+    <Button onclick={exportHosts}>
+      <span class="inline-flex items-center gap-1">
+        <DownloadSimple size={16} weight="bold" /> Export
+      </span>
+    </Button>
+    <Button onclick={triggerImport}>
+      <span class="inline-flex items-center gap-1">
+        <UploadSimple size={16} weight="bold" /> Import
+      </span>
+    </Button>
+    <Button variant="primary" onclick={() => (showAddHost = true)}>
+      <span class="inline-flex items-center gap-1">
+        <Plus size={16} weight="bold" /> Add Host
+      </span>
+    </Button>
   </div>
 </div>
 
@@ -153,74 +170,75 @@
   bind:this={fileInput}
   type="file"
   accept=".conf,.txt,text/plain"
-  class="hidden-file-input"
+  class="hidden"
   onchange={onFileSelected}
 />
 
 {#if tagsStore.error}
-  <p class="error">{tagsStore.error}</p>
+  <p class="mb-2 text-sm text-danger">{tagsStore.error}</p>
 {/if}
 
 {#if importError}
-  <p class="error">{importError}</p>
+  <p class="mb-2 text-sm text-danger">{importError}</p>
 {/if}
 
 {#if configStore.error}
-  <p class="error">{configStore.error}</p>
+  <p class="text-sm text-danger">{configStore.error}</p>
 {:else if configStore.hosts.length === 0}
-  <p class="empty-state">No hosts configured.</p>
+  <p class="py-12 text-center text-text-muted">No hosts configured.</p>
 {:else if filteredHosts.length === 0}
-  <p class="empty-state">No hosts match the current filters.</p>
+  <p class="py-12 text-center text-text-muted">
+    No hosts match the current filters.
+  </p>
 {:else}
-  <table>
+  <table class="w-full border-collapse text-sm">
     <thead>
       <tr>
-        <th>Alias</th>
-        <th>Host Name</th>
-        <th>User</th>
-        <th>Port</th>
-        <th>Identity File</th>
-        <th>Tags</th>
-        <th></th>
+        <th class="border-b border-border px-2 py-2 text-left text-text-muted">Alias</th>
+        <th class="border-b border-border px-2 py-2 text-left text-text-muted">Host Name</th>
+        <th class="border-b border-border px-2 py-2 text-left text-text-muted">User</th>
+        <th class="border-b border-border px-2 py-2 text-left text-text-muted">Port</th>
+        <th class="border-b border-border px-2 py-2 text-left text-text-muted">Identity File</th>
+        <th class="border-b border-border px-2 py-2 text-left text-text-muted">Tags</th>
+        <th class="border-b border-border px-2 py-2"></th>
       </tr>
     </thead>
     <tbody>
       {#each filteredHosts as host (host.aliases.join(","))}
         {@const result = testResults[host.aliases.join(",")]}
-        <tr>
-          <td>{host.aliases.join(", ")}</td>
-          <td>{host.hostName ?? "-"}</td>
-          <td>{host.user ?? "-"}</td>
-          <td>{host.port ?? "-"}</td>
-          <td class="mono">{host.identityFile ?? "-"}</td>
-          <td>
+        <tr class="hover:bg-canvas">
+          <td class="border-b border-border px-2 py-2 font-mono text-text">{host.aliases.join(", ")}</td>
+          <td class="border-b border-border px-2 py-2 text-text">{host.hostName ?? "-"}</td>
+          <td class="border-b border-border px-2 py-2 text-text">{host.user ?? "-"}</td>
+          <td class="border-b border-border px-2 py-2 text-text">{host.port ?? "-"}</td>
+          <td class="border-b border-border px-2 py-2 font-mono text-xs text-text-muted">{host.identityFile ?? "-"}</td>
+          <td class="border-b border-border px-2 py-2">
             <input
-              class="tags-input"
               type="text"
               placeholder="work, personal"
               value={tagsDisplayValue(host)}
               oninput={(e) =>
                 onTagsInput(host, (e.target as HTMLInputElement).value)}
               onblur={() => onTagsBlur(host)}
+              class="w-full rounded-sm border border-border bg-surface px-2 py-1 text-xs text-text"
             />
           </td>
-          <td>
-            <button onclick={() => (editingHost = host)}>Edit</button>
-            <button onclick={() => (hostToDelete = host)}>Delete</button>
-            <button
-              onclick={() => testConnection(host)}
-              disabled={result?.status === "testing"}
-            >
-              {result?.status === "testing" ? "Testing..." : "Test"}
-            </button>
-            {#if result && result.status !== "testing"}
-              <span
-                class={result.status === "success" ? "test-ok" : "test-fail"}
+          <td class="border-b border-border px-2 py-2">
+            <div class="flex items-center gap-1">
+              <IconButton icon={PencilSimple} label="Edit host" onclick={() => (editingHost = host)} />
+              <IconButton icon={Trash} label="Delete host" variant="danger" onclick={() => (hostToDelete = host)} />
+              <Button
+                onclick={() => testConnection(host)}
+                disabled={result?.status === "testing"}
               >
-                {result.status === "success" ? "✓" : "✗"}
-                {result.message}
-              </span>
-            {/if}
+                {result?.status === "testing" ? "Testing..." : "Test"}
+              </Button>
+              {#if result && result.status !== "testing"}
+                <Badge variant={result.status === "success" ? "success" : "danger"}>
+                  {result.message}
+                </Badge>
+              {/if}
+            </div>
           </td>
         </tr>
       {/each}
@@ -254,64 +272,3 @@
     onClose={() => (importPreview = null)}
   />
 {/if}
-
-<style>
-  .header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-  }
-  .search {
-    flex: 1;
-    max-width: 240px;
-    padding: 0.5rem;
-    box-sizing: border-box;
-  }
-  .actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-left: auto;
-  }
-  .hidden-file-input {
-    display: none;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  th,
-  td {
-    text-align: left;
-    padding: 0.5rem;
-    border-bottom: 1px solid #ddd;
-  }
-  .mono {
-    font-family: monospace;
-    font-size: 0.8rem;
-  }
-  .tags-input {
-    width: 100%;
-    box-sizing: border-box;
-    padding: 0.3rem;
-    font-size: 0.85rem;
-  }
-  .empty-state {
-    text-align: center;
-    padding: 3rem 1rem;
-    color: #666;
-  }
-  .error {
-    color: #c0392b;
-  }
-  .test-ok {
-    color: #2e7d32;
-    margin-left: 0.5rem;
-    font-size: 0.8rem;
-  }
-  .test-fail {
-    color: #c0392b;
-    margin-left: 0.5rem;
-    font-size: 0.8rem;
-  }
-</style>

@@ -1,5 +1,7 @@
 <script lang="ts">
-  import { configStore, type ImportPreview } from "$lib/config.svelte";
+  import { configStore, type ImportPreview } from '$lib/config.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
 
   let {
     text,
@@ -24,71 +26,38 @@
   }
 </script>
 
-<div class="modal-backdrop">
-  <div class="modal">
-    <h2>Import Hosts</h2>
-    {#if preview.accepted.length === 0 && preview.skipped.length === 0}
-      <p>Nothing to import — no valid Host entries found in this file.</p>
-    {:else}
-      {#if preview.accepted.length > 0}
-        <p><strong>Will import:</strong></p>
-        <ul>
-          {#each preview.accepted as host (host.aliases.join(","))}
-            <li>{host.aliases.join(", ")}</li>
-          {/each}
-        </ul>
-      {/if}
-      {#if preview.skipped.length > 0}
-        <p><strong>Skipped (already exists):</strong></p>
-        <ul>
-          {#each preview.skipped as alias (alias)}
-            <li>{alias}</li>
-          {/each}
-        </ul>
-      {/if}
+<Modal title="Import Hosts" {onClose} width="420px">
+  {#if preview.accepted.length === 0 && preview.skipped.length === 0}
+    <p class="text-sm text-text-muted">
+      Nothing to import — no valid Host entries found in this file.
+    </p>
+  {:else}
+    {#if preview.accepted.length > 0}
+      <p class="text-sm font-medium text-text">Will import:</p>
+      <ul class="mb-3 mt-1 list-disc pl-5 text-sm text-text">
+        {#each preview.accepted as host (host.aliases.join(","))}
+          <li>{host.aliases.join(", ")}</li>
+        {/each}
+      </ul>
     {/if}
-    {#if error}
-      <p class="error">{error}</p>
+    {#if preview.skipped.length > 0}
+      <p class="text-sm font-medium text-text">Skipped (already exists):</p>
+      <ul class="mt-1 list-disc pl-5 text-sm text-text-muted">
+        {#each preview.skipped as alias (alias)}
+          <li>{alias}</li>
+        {/each}
+      </ul>
     {/if}
-    <div class="actions">
-      <button type="button" onclick={onClose}>Cancel</button>
-      {#if preview.accepted.length > 0}
-        <button onclick={confirmImport} disabled={importing}>
-          {importing ? "Importing..." : "Confirm Import"}
-        </button>
-      {/if}
-    </div>
-  </div>
-</div>
-
-<style>
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    min-width: 360px;
-    max-height: 80vh;
-    overflow-y: auto;
-  }
-  ul {
-    margin: 0.25rem 0 0.75rem;
-    padding-left: 1.25rem;
-  }
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-  .error {
-    color: #c0392b;
-  }
-</style>
+  {/if}
+  {#if error}
+    <p class="mt-2 text-sm text-danger">{error}</p>
+  {/if}
+  {#snippet footer()}
+    <Button onclick={onClose}>Cancel</Button>
+    {#if preview.accepted.length > 0}
+      <Button variant="primary" onclick={confirmImport} disabled={importing}>
+        {importing ? 'Importing...' : 'Confirm Import'}
+      </Button>
+    {/if}
+  {/snippet}
+</Modal>

@@ -1,5 +1,8 @@
 <script lang="ts">
-  import { keysStore } from "$lib/keys.svelte";
+  import { keysStore } from '$lib/keys.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
+  import Input from '$lib/components/ui/Input.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
 
   let { onClose }: { onClose: () => void } = $props();
 
@@ -27,60 +30,22 @@
   }
 </script>
 
-<div class="modal-backdrop">
-  <div class="modal">
-    <h2>New Key</h2>
-    <form onsubmit={submit}>
-      <label>
-        Name
-        <input bind:value={name} placeholder="id_ed25519" />
-      </label>
-      <label>
-        Passphrase (optional)
-        <input type="password" bind:value={passphrase} />
-      </label>
-      {#if error}
-        <p class="error">{error}</p>
-      {/if}
-      <div class="actions">
-        <button type="button" onclick={onClose}>Cancel</button>
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Generating..." : "Generate"}
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<style>
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    min-width: 320px;
-  }
-  label {
-    display: block;
-    margin-bottom: 0.75rem;
-  }
-  input {
-    width: 100%;
-    margin-top: 0.25rem;
-  }
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-  }
-  .error {
-    color: #c0392b;
-  }
-</style>
+<Modal title="New Key" {onClose}>
+  <form onsubmit={submit} class="flex flex-col gap-3">
+    <Input label="Name" placeholder="id_ed25519" bind:value={name} />
+    <Input
+      label="Passphrase (optional)"
+      type="password"
+      bind:value={passphrase}
+    />
+    {#if error}
+      <p class="text-sm text-danger">{error}</p>
+    {/if}
+    <div class="mt-1 flex justify-end gap-2">
+      <Button onclick={onClose}>Cancel</Button>
+      <Button type="submit" variant="primary" disabled={submitting}>
+        {submitting ? 'Generating...' : 'Generate'}
+      </Button>
+    </div>
+  </form>
+</Modal>

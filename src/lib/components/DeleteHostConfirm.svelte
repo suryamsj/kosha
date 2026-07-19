@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { configStore } from "$lib/config.svelte";
-  import type { HostEntry } from "$lib/config.svelte";
+  import { configStore } from '$lib/config.svelte';
+  import type { HostEntry } from '$lib/config.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
 
   let { host, onClose }: { host: HostEntry; onClose: () => void } = $props();
 
@@ -30,58 +32,19 @@
   }
 </script>
 
-<div class="modal-backdrop">
-  <div class="modal">
-    <h2>Delete "{host.aliases.join(", ")}"?</h2>
-    <p>
-      This permanently removes this Host block from ~/.ssh/config. A
-      backup is made first.
-    </p>
-    <pre>{renderBlock(host)}</pre>
-    {#if error}
-      <p class="error">{error}</p>
-    {/if}
-    <div class="actions">
-      <button onclick={onClose}>Cancel</button>
-      <button onclick={confirmDelete} disabled={deleting} class="danger">
-        {deleting ? "Deleting..." : "Delete"}
-      </button>
-    </div>
-  </div>
-</div>
-
-<style>
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    min-width: 320px;
-  }
-  pre {
-    background: #f6f6f6;
-    padding: 0.5rem;
-    font-size: 0.75rem;
-    white-space: pre-wrap;
-  }
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-    margin-top: 1rem;
-  }
-  .danger {
-    background: #c0392b;
-    color: white;
-  }
-  .error {
-    color: #c0392b;
-  }
-</style>
+<Modal title={`Delete "${host.aliases.join(', ')}"?`} {onClose}>
+  <p class="mb-3 text-sm text-text-muted">
+    This permanently removes this Host block from ~/.ssh/config. A backup is
+    made first.
+  </p>
+  <pre class="whitespace-pre-wrap rounded-sm bg-canvas p-2 font-mono text-xs text-text">{renderBlock(host)}</pre>
+  {#if error}
+    <p class="mt-2 text-sm text-danger">{error}</p>
+  {/if}
+  {#snippet footer()}
+    <Button onclick={onClose}>Cancel</Button>
+    <Button variant="danger" onclick={confirmDelete} disabled={deleting}>
+      {deleting ? 'Deleting...' : 'Delete'}
+    </Button>
+  {/snippet}
+</Modal>

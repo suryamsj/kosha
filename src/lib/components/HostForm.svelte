@@ -2,6 +2,9 @@
   import { configStore } from "$lib/config.svelte";
   import { keysStore } from "$lib/keys.svelte";
   import type { HostEntry } from "$lib/config.svelte";
+  import Modal from "$lib/components/ui/Modal.svelte";
+  import Input from "$lib/components/ui/Input.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
 
   let {
     mode,
@@ -92,108 +95,49 @@
   }
 </script>
 
-<div class="modal-backdrop">
-  <div class="modal">
-    <h2>{mode === "add" ? "New Host" : "Edit Host"}</h2>
-    <form onsubmit={submit}>
-      <label>
-        Alias
-        <input bind:value={aliasInput} placeholder="github gh" />
-      </label>
-      <label>
-        Host Name
-        <input bind:value={hostName} placeholder="github.com" />
-      </label>
-      <label>
-        User
-        <input bind:value={user} placeholder="git" />
-      </label>
-      <label>
-        Port
-        <input bind:value={port} placeholder="22" />
-      </label>
-      <label>
-        Identity File
-        <select bind:value={identityFile}>
-          <option value="">None</option>
-          {#each keysStore.keys as key (key.name)}
-            <option value={`~/.ssh/${key.name}`}>{key.name}</option>
-          {/each}
-        </select>
-      </label>
+<Modal title={mode === "add" ? "New Host" : "Edit Host"} {onClose} width="480px">
+  <form onsubmit={submit} class="flex flex-col gap-3">
+    <Input label="Alias" placeholder="github gh" bind:value={aliasInput} />
+    <Input label="Host Name" placeholder="github.com" bind:value={hostName} />
+    <Input label="User" placeholder="git" bind:value={user} />
+    <Input label="Port" placeholder="22" bind:value={port} />
+    <label class="flex flex-col gap-1">
+      <span class="text-sm font-medium text-text">Identity File</span>
+      <select
+        bind:value={identityFile}
+        class="rounded-sm border border-border bg-surface px-3 py-1.5 text-sm text-text"
+      >
+        <option value="">None</option>
+        {#each keysStore.keys as key (key.name)}
+          <option value={`~/.ssh/${key.name}`}>{key.name}</option>
+        {/each}
+      </select>
+    </label>
 
-      <div class="preview">
-        {#if mode === "edit"}
-          <div>
-            <strong>Before</strong>
-            <pre>{beforePreview}</pre>
-          </div>
-        {/if}
-        <div>
-          <strong>{mode === "edit" ? "After" : "Preview"}</strong>
-          <pre>{afterPreview}</pre>
+    <div class="flex gap-4 rounded-sm bg-canvas p-3">
+      {#if mode === "edit"}
+        <div class="flex-1">
+          <strong class="text-xs font-medium text-text-muted">Before</strong>
+          <pre class="mt-1 whitespace-pre-wrap font-mono text-xs text-text">{beforePreview}</pre>
         </div>
-      </div>
-
-      {#if error}
-        <p class="error">{error}</p>
       {/if}
-      <div class="actions">
-        <button type="button" onclick={onClose}>Cancel</button>
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Saving..." : "Save"}
-        </button>
+      <div class="flex-1">
+        <strong class="text-xs font-medium text-text-muted"
+          >{mode === "edit" ? "After" : "Preview"}</strong
+        >
+        <pre class="mt-1 whitespace-pre-wrap font-mono text-xs text-text">{afterPreview}</pre>
       </div>
-    </form>
-  </div>
-</div>
+    </div>
 
-<style>
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    min-width: 400px;
-    max-height: 90vh;
-    overflow-y: auto;
-  }
-  label {
-    display: block;
-    margin-bottom: 0.75rem;
-  }
-  input,
-  select {
-    width: 100%;
-    margin-top: 0.25rem;
-  }
-  .preview {
-    display: flex;
-    gap: 1rem;
-    margin-bottom: 0.75rem;
-  }
-  .preview > div {
-    flex: 1;
-  }
-  .preview pre {
-    background: #f6f6f6;
-    padding: 0.5rem;
-    font-size: 0.75rem;
-    white-space: pre-wrap;
-  }
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-  }
-  .error {
-    color: #c0392b;
-  }
-</style>
+    {#if error}
+      <p class="text-sm text-danger">{error}</p>
+    {/if}
+
+    <div class="mt-1 flex justify-end gap-2">
+      <Button onclick={onClose}>Cancel</Button>
+      <Button type="submit" variant="primary" disabled={submitting}>
+        {submitting ? "Saving..." : "Save"}
+      </Button>
+    </div>
+  </form>
+</Modal>

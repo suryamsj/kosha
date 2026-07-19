@@ -1,6 +1,8 @@
 <script lang="ts">
-  import { invoke } from "@tauri-apps/api/core";
-  import type { KeyInfo } from "$lib/keys.svelte";
+  import { invoke } from '@tauri-apps/api/core';
+  import type { KeyInfo } from '$lib/keys.svelte';
+  import Modal from '$lib/components/ui/Modal.svelte';
+  import Button from '$lib/components/ui/Button.svelte';
 
   let { keyInfo, onClose }: { keyInfo: KeyInfo; onClose: () => void } =
     $props();
@@ -27,49 +29,25 @@
   }
 </script>
 
-<div class="modal-backdrop">
-  <div class="modal">
-    <h2>{keyInfo.name}</h2>
-    <p>Type: {keyInfo.keyType}</p>
-    <p>Fingerprint: {keyInfo.fingerprint}</p>
-    {#if error}
-      <p class="error">{error}</p>
-    {:else}
-      <textarea readonly rows="4">{publicKey}</textarea>
-      <button onclick={copy}>{copied ? "Copied!" : "Copy public key"}</button>
-    {/if}
-    <div class="actions">
-      <button onclick={onClose}>Close</button>
+<Modal title={keyInfo.name} {onClose} width="480px">
+  <p class="text-sm text-text-muted">Type: {keyInfo.keyType}</p>
+  <p class="mb-3 font-mono text-xs text-text-muted">
+    Fingerprint: {keyInfo.fingerprint}
+  </p>
+  {#if error}
+    <p class="text-sm text-danger">{error}</p>
+  {:else}
+    <textarea
+      readonly
+      rows="4"
+      value={publicKey}
+      class="w-full rounded-sm border border-border bg-canvas p-2 font-mono text-xs text-text"
+    ></textarea>
+    <div class="mt-2">
+      <Button onclick={copy}>{copied ? 'Copied!' : 'Copy public key'}</Button>
     </div>
-  </div>
-</div>
-
-<style>
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.4);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .modal {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 8px;
-    min-width: 400px;
-  }
-  textarea {
-    width: 100%;
-    font-family: monospace;
-    font-size: 0.8rem;
-  }
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    margin-top: 0.75rem;
-  }
-  .error {
-    color: #c0392b;
-  }
-</style>
+  {/if}
+  {#snippet footer()}
+    <Button onclick={onClose}>Close</Button>
+  {/snippet}
+</Modal>
